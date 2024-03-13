@@ -2,14 +2,11 @@
 # Author : PFo
 # Date : 2023
 
-
-set -x
-# !!! Transferer l'ensemble des commandes que vous avez saisi dans votre terminal dans le fichier MesCmd_Linux.txt afin d'en avoir un historique
-# je recupere la sortie 10 du script et renvoie le resultat dans le fichier MesCmd_Linux.txt
-exec 10> MesCmd_Linux.txt
-# je renvoie la valeur BASH_XTRACEFD qui correspond a la liste des commandes effectué au cours de l'execution du script dans la sortie 10 
-export BASH_XTRACEFD=10
-
+# je vérifie si le script est execute avec des droits admin
+if [[ $EUID -ne 0 ]]; then
+        echo "ce script doit être executé avec des droit root"
+        exit 2
+fi 
 
 # _____________________ FUNCTIONS _______________________________
 F_Aide() {
@@ -18,8 +15,6 @@ F_Aide() {
         echo "          ou Param = le chemin du dossier courant !"
 }
 # _____________________ FUNCTIONS _______________________________
-
-
 
 # Debut du script ###############################################
 
@@ -69,7 +64,7 @@ cd Log
 cp /var/log/syslog.1 ./
 if [ $? -ne 0 ]; then
         "Erreur de copie du fichier Syslog"
-        exit 2
+        exit 3
     else
         echo "Copie realisee par cp"
 fi
@@ -147,7 +142,9 @@ find /etc/systemd/system/ -name *.service
 curl https://assets.digitalocean.cnanoom/articles/command-line-intro/verne_twenty-thousand-leagues.txt -o verne_twenty-thousand-leagues.txt
 
 # Point G _______________________________________________________
-
+# !!! Transferer l'ensemble des commandes que vous avez saisi dans votre terminal dans le fichier MesCmd_Linux.txt afin d'en avoir un historique
+# je recupere la sortie 10 du script et renvoie le resultat dans le fichier MesCmd_Linux.txt
+history > MesCmd_Linux.txt
 # !!! Merci d'ecrire un bloc de script qui affichera toutes les lettres de l'alphabet avec le numero d'ordre devant chaque lettre
 for i in {a..z}; do 
         echo "$(printf '%d' "'$i") : $i"

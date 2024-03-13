@@ -1,0 +1,6 @@
+nom,prenom,mail,groupe,nomcomplet,nomutilisateur,telephone,titre,service
+Dupont,Jean,jean.dupont@mondomaine.com,Developpeurs,Jean Dupont,jdupont,+33 1 23 45 67 89,Développeur Python,Informatique
+Martin,Marie,marie.martin@mondomaine.com,Testeurs,Marie Martin,mmartin,+33 1 98 76 54 32,Testeur Logiciel,Informatique
+Leroy,Paul,paul.leroy@mondomaine.com,Developpeurs,Paul Leroy,pleroy,+33 1 45 67 89 01,Développeur Java,Informatique
+Roux,Julie,julie.roux@mondomaine.com,Testeurs,Julie Roux,jroux,+33 1 76 54 32 10,Testeur Web,Informatique
+Moreau,Thomas,thomas.moreau@mondomaine.com,Developpeurs,Thomas Moreau,tmoreau,+33 1 34 56 78 90,Développeur C#,Informatique

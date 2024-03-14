@@ -1,90 +1,112 @@
+<#
+.DESCRIPTION
+    Script qui permet de créer des utilisateurs dans un domaien 
+.PARAMETER Path
+    correspond au chemin qui contient le csv
+.PARAMETER Domaine
+    correpond au domaine Active Directory où créer les utilisateurs 
+.PARAMETER Log 
+    correspond au fichier où doit être enregister les logs de ce script
+.NOTES
+    Author: Erwan Le crom
+    Date:   13/03/2024   
+#>
+[cmdletbinding()]
+param (
+    [Parameter(Mandatory = $false)]
+    [string]$Path = '.\ad-list.csv',
+    [Parameter(Mandatory = $false)]
+    [string]$Domaine = 'mondomaine.com',
+    [Parameter(Mandatory = $false)]
+    [string]$Log = '.\utilisateur.log'
+)
+
+# check if run as administrator
 #Requires -RunAsAdministrator
+# check if powershell 7 minimum is used
+#Requires -Version 7
 
 Import-Module ActiveDirectory
-# store system variables 
-$existingVariables = Get-Variable
-# Define domain name and OU 
-$domain = "mondomaine.com"
-$ou_dn = "ou=Informatique,dc=mondomaine,dc=com"
+# check if activedirectory module is loaded
+#Requires -Modules ActiveDirectory
+
+# Define OU 
+$ou_dn = "OU=Informatique,DC=mondomaine,DC=com"
 
 # Verify domain name is correct
 try {
     # Find the name from domain
-    $domain_name = Get-ADDomain -Identity $domain
+    Get-ADDomain -Identity $Domaine
 } catch {
     # Error control
-    Write-Output "Invalid domain name"
+    Write-Host -ForegroundColor Red "Invalid domain name"
     exit 2 
 }
 
 # Verify if DNS name is resolved
 try {
     # Find domain controller
-    $dc = Resolve-DnsName -Name $domain -Server 127.0.0.1
+    Resolve-DnsName -Name $Domaine -Server 127.0.0.1
 } catch {
     # Error control
-    Write-Output "Couldn't resolve DNS name for domain $domain_name"
+    Write-Host -ForegroundColor Red  "Couldn't resolve DNS name for domain $Domaine"
     exit 3 
 }
 
 # Find the OU in the domain
-$ou = Get-ADOrganizationalUnit -Identity $ou_dn
-# define log file path 
-$logFilePath = ".\utilisateur.log"
+try {
+    Get-ADOrganizationalUnit -Identity $ou_dn
+} catch {
+    Write-Host -ForegroundColor Red "Organization Unit $ou_dc not exist"
+    exit 4
+}
+
 #check if log file exist
-if (-not (Test-Path -Path $logFilePath -PathType Leaf)) {
-    New-Item -Path $logFilePath -ItemType File
+if (-not (Test-Path -Path $Log -PathType Leaf)) {
+    New-Item -Path $Log-ItemType File
 }
 # function that create line to log file 
 function create_log_line ([String]$Message) {
-    Add-Content -Path $logFilePath $Message 
+    Write-Host -ForegroundColor Red $Message
+    Add-Content -Path $Log $Message 
 }
 
 #import csv 
-$csvPath = ".\ad-list.csv"
-$csvData = Import-Csv -Path $csvPath -Delimiter ','
+$csvData = Import-Csv -Path $Path -Delimiter ','
 # read csv data 
 foreach ($ligne in $csvData) {
     try {
-        $nom = $ligne.nom
-        $prenom = $ligne.prenom
-        $mail = $ligne.mail 
         $groupe = $ligne.groupe
-        $nomcomplet = $ligne.nomcomplet
-        $nomutilisateur = $ligne.nomutilisateur 
-        $telephone = $ligne.telephone 
-        $titre = $ligne.titre 
-        $service = $ligne.service
-        $secpasswd = ConvertTo-SecureString -String "Azerty123*" -AsPlainText -Force
-        # add user in the OU 
-        New-ADUser -Name $nom -Path $ou -Enabled $true -AccountPassword $secpasswd
-        # attribute that countains other properties
+        $password = -Join((48..57) + (65..90) + (97..122) | Get-Random -Count 10 | % {[char]$_})
         $attributes = @{
-            "givenName"=$prenom;
-            "emailaddress"=$mail;
-            "displayName"=$nomcomplet;
-            "sAMAccountName"=$nomutilisateur;
-            "officephone"=$telephone;
-            "title"=$titre;
-            "department"=$service
+            "Name"=$ligne.nomutilisateur;
+            "Surname"=$ligne.nom;
+            "givenName"=$ligne.prenom;
+            "emailaddress"=$ligne.mail ;
+            "displayName"=$ligne.nomcomplet;
+            "sAMAccountName"=$ligne.nomutilisateur ;
+            "officephone"=$ligne.telephone ;
+            "title"=$ligne.titre;
+            "department"=$ligne.service;
+            "changePasswordAtLogon"=$true;
+            "AccountPassword"=ConvertTo-SecureString -String $password -AsPlainText -Force;
+            "Enabled"=$true;
+            "Path"=$ou_dn
         }
-        $utilisateur = Get-ADUser -Filter "Name -eq `"$nom`""
-        # update the user with attributes
-        Write-Output $utilisateur | Set-ADUser @attributes
+        # add user in the OU 
+        $utilisateur = New-ADUser @attributes -PassThru  
+        # remove attributes
         # add user to group 
         $ADGroup = Get-ADGroup -Filter "Name -eq `"$groupe`""
         Add-ADGroupMember -Identity $ADGroup -Members $utilisateur
-        # change password at first login
-        Write-Output $utilisateur | Set-ADUser -ChangePasswordAtLogon $true
-        $messageLog = "User $nomcomplet - creation successfull"
-        Write-Output $messageLog
-        Add-Content -Path $logFilePath -Value $messageLog
+        $messageLog = "User $nomcomplet - creation successfull with password $password"
+        create_log_line -Message $messageLog
+    } catch [Microsoft.ActiveDirectory.Management.ADIdentityAlreadyExistsException] {
+        $alreadyExist = "User $nomcomplet already exist"
+        create_log_line -Message $alreadyExist
     } catch {
         $errorMessage = "Error during creation process of the user - $nomcomplet : $_.Exception"
-        Write-Output $errorMessage
-        Add-Content -Path $logFilePath -Value $errorMessage
+        create_log_line -Message $errorMessage
     } finally {
-        # remove variable excluding system variable
-        Get-Variable | Where-Object Name -notin $existingVariables.Name | Remove-Variable
     }
 }

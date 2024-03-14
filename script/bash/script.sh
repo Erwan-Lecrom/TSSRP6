@@ -28,7 +28,6 @@ elif [ -z "$1" ]; then
         exit 8
 else
         echo "Utilisation du repertoire  $1"
-        F_Aide "$1"
 fi
 
 # Recuperation du point de depart
